@@ -1,0 +1,197 @@
+static int rscb_init(void*);
+static int rscb_clear(void*);
+static int rscb_destroy(void*);
+static int rscb_structure(void*, int, gravm_runstack_edgedef_t*);
+static int rscb_begin(void*);
+static int rscb_end(void*);
+static int rscb_descend(void*, void*, void*);
+static int rscb_ascend(void*, bool, int, void*, void*);
+static int rscb_edge_prepare(void*, int, void*);
+static int rscb_edge_unprepare(void*, int, void*);
+static int rscb_edge_begin(void*, int, void*);
+static int rscb_edge_next(void*, int, int, void*);
+static int rscb_edge_end(void*, int, void*);
+static int rscb_edge_abort(void*, int, int, void*);
+static int rscb_edge_catch(void*, int, int, void*);
+static int rscb_node_enter(void*, int, void*);
+static int rscb_node_leave(void*, int, void*);
+static int rscb_node_run(void*, int, void*);
+static int rscb_node_catch(void*, int, int, void*);
+
+static const gravm_runstack_callback_t rs_callbacks = {
+	.init = rscb_init,
+	.clear = rscb_clear,
+	.destroy = rscb_destroy,
+	.structure = rscb_structure,
+	.begin = rscb_begin,
+	.end = rscb_end,
+	.descend = rscb_descend,
+	.ascend = rscb_ascend,
+
+	.edge_prepare = rscb_edge_prepare,
+	.edge_unprepare = rscb_edge_unprepare,
+	.edge_begin = rscb_edge_begin,
+	.edge_next = rscb_edge_next,
+	.edge_end = rscb_edge_end,
+	.edge_abort = rscb_edge_abort,
+	.edge_catch = rscb_edge_catch,
+
+	.node_enter = rscb_node_enter,
+	.node_leave = rscb_node_leave,
+	.node_run = rscb_node_run,
+	.node_catch = rscb_node_catch
+};
+
+static int rscb_init(
+		void *data)
+{
+	return 0; /* number of edges */
+}
+
+static void rscb_clear(
+		void *data)
+{
+}
+
+static void rscb_destroy(
+		void *data)
+{
+}
+
+static int rscb_structure(
+		void *data,
+		int edge,
+		gravm_runstack_edgedef *def)
+{
+	def->source = GRAVM_RS_ROOT;
+	def->target = 0;
+	def->priority = 0;
+	return 0;
+}
+
+static int rscb_begin(
+		void *data)
+{
+	return GRAVM_RS_TRUE;
+}
+
+static int rscb_end(
+		void *data)
+{
+	return GRAVM_RS_SUCCESS;
+}
+
+static int rscb_descend(
+		void *data,
+		void *parent_frame_,
+		void *child_frame_)
+{
+	return GRAVM_RS_TRUE;
+}
+
+static int rscb_ascend(
+		void *data,
+		bool throwing,
+		int err,
+		void *parent_frame_,
+		void *child_frame_)
+{
+	return GRAVM_RS_SUCCESS;
+}
+
+static int rscb_edge_prepare(
+		void *data,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_SUCCESS;
+}
+
+static int rscb_edge_unprepare(
+		void *data,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_SUCCESS;
+}
+
+static int rscb_edge_begin(
+		void *data,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_TRUE;
+}
+
+static int rscb_edge_next(
+		void *data,
+		int iteration,
+		int id,
+		void *frame)
+{
+	if(iteration == 0)
+		return GRAVM_RS_TRUE;
+	else
+		return GRAVM_RS_FALSE;
+}
+
+static int rscb_edge_end(
+		void *data,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_SUCCESS;
+}
+
+static int rscb_edge_abort(
+		void *data,
+		int err,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_SUCCESS;
+}
+
+static int rscb_edge_catch(
+		void *data,
+		int err,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_FALSE;
+}
+
+static int rscb_node_enter(
+		void *data,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_TRUE;
+}
+
+static int rscb_node_leave(
+		void *data,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_SUCCESS;
+}
+
+static int rscb_node_run(
+		void *data,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_TRUE;
+}
+
+static int rscb_node_catch(
+		void *data,
+		int err,
+		int id,
+		void *frame)
+{
+	return GRAVM_RS_FALSE;
+}
+
+
