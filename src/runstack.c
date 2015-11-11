@@ -285,6 +285,16 @@ static int cmp_priority(
 		return 0;
 }
 
+static int cb_cmp(
+		btree_t *btree,
+		const void *a,
+		const void *b,
+		void *group)
+{
+	int (*cmp)(const void*, const void*) = group;
+	return cmp(a, b);
+}
+
 static void pop(
 		gravm_runstack_t *self)
 {
@@ -902,11 +912,12 @@ gravm_runstack_t *gravm_runstack_new(
 		return NULL;
 	}
 
-	rs->edges = btree_new(GRAVM_BTREE_ORDER, sizeof(edge_entry_t), cmp_full, NULL, NULL, BTREE_OPT_DEFAULT);
+	rs->edges = btree_new(GRAVM_BTREE_ORDER, sizeof(edge_entry_t), cb_cmp, BTREE_OPT_DEFAULT);
 	if(rs->edges == NULL) {
 		free(rs);
 		return NULL;
 	}
+	btree_set_group_default(rs->edges, cmp_full);
 
 	rs->framedata_size = framedata_size;
 	rs->cb = cb;
@@ -979,8 +990,8 @@ int gravm_runstack_prepare(
 	}
 
 	entry.source = GRAVM_RS_ROOT;
-	self->root_lower = btree_find_lower_set(self->edges, &entry, cmp_source, &it);
-	self->root_upper = btree_find_upper_set(self->edges, &entry, cmp_source, NULL);
+	self->root_lower = btree_find_lower_group(self->edges, &entry, cmp_source, &it);
+	self->root_upper = btree_find_upper_group(self->edges, &entry, cmp_source, NULL);
 	assert(self->root_lower >= 0);
 	assert(self->root_upper >= 0);
 	if(self->root_lower == self->root_upper) /* missing root edges */
@@ -991,13 +1002,13 @@ int gravm_runstack_prepare(
 
 		/* boundaries of outgoing edges */
 		entry.source = cur->target;
-		cur->out_lower = btree_find_lower_set(self->edges, &entry, cmp_source, NULL);
-		cur->out_upper = btree_find_upper_set(self->edges, &entry, cmp_source, NULL);
+		cur->out_lower = btree_find_lower_group(self->edges, &entry, cmp_source, NULL);
+		cur->out_upper = btree_find_upper_group(self->edges, &entry, cmp_source, NULL);
 		assert(cur->out_upper >= cur->out_lower);
 
 		/* boundaries of pre- and post-outgoing edges (priority < 0/>= 0) */
 		entry.priority = -1;
-		cur->out_boundary = btree_find_upper_set(self->edges, &entry, cmp_priority, NULL);
+		cur->out_boundary = btree_find_upper_group(self->edges, &entry, cmp_priority, NULL);
 	}
 
 	self->state = GRAVM_RS_STATE_PREPARED;
