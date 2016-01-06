@@ -25,6 +25,7 @@ foreach(x ${gravm_HEADERS})
 endforeach()
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 add_executable(alltest test/main.c ${gravm_SOURCE_FILES} ${gravm_HEADER_FILES} test/runstack.h)
 target_link_libraries(alltest ${BTREE_LIBRARIES} -lcunit)
