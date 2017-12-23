@@ -237,10 +237,6 @@ static int cb_test_init(
 	return ctx->n_edges;
 }
 
-static void cb_test_clear(
-		void *data)
-{}
-
 static void cb_test_destroy(
 		void *data)
 {}
@@ -1957,7 +1953,6 @@ int gravmtest_runstack()
 	memset(&test_cb, 0, sizeof(test_cb));
 
 	test_cb.init = cb_test_init;
-	test_cb.clear = cb_test_clear;
 	test_cb.destroy = cb_test_destroy;
 	test_cb.structure = cb_test_structure;
 	test_cb.begin = cb_test_begin;

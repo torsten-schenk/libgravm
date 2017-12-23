@@ -46,26 +46,74 @@ enum {
 	GRAVM_RS_IP_POP
 };
 
-typedef struct gravm_runstack gravm_runstack_t;
-typedef struct gravm_runstack_callback gravm_runstack_callback_t;
-
 typedef struct {
 	int source;
 	int target;
 	int priority;
 } gravm_runstack_edgedef_t;
 
-struct gravm_runstack_callback {
-	int (*init)(void *user); /* returns: number of edges */
-	void (*clear)(void *user);
-	void (*destroy)(void *user);
-	int (*structure)(void *user, int edge, gravm_runstack_edgedef_t *def);
+#define GRAVM_RUNSTACK_MKCB( \
+		INIT, DESTROY, STRUCTURE, BEGIN, END, \
+		DESCEND, ASCEND, \
+		EDGE_PREPARE, EDGE_UNPREPARE, EDGE_BEGIN, EDGE_NEXT, EDGE_END, EDGE_ABORT, EDGE_CATCH, \
+		NODE_ENTER, NODE_RUN, NODE_LEAVE, NODE_CATCH) \
+		{ \
+			.init = (gravm_runstack_init_t)(INIT), \
+			.destroy = (gravm_runstack_destroy_t)(DESTROY), \
+			.structure = (gravm_runstack_structure_t)(STRUCTURE), \
+			.begin = (gravm_runstack_begin_t)(BEGIN), \
+			.end = (gravm_runstack_end_t)(END), \
+			.descend = (gravm_runstack_descend_t)(DESCEND), \
+			.ascend = (gravm_runstack_ascend_t)(ASCEND), \
+			.edge_prepare = (gravm_runstack_edge_prepare_t)(EDGE_PREPARE), \
+			.edge_unprepare = (gravm_runstack_edge_unprepare_t)(EDGE_UNPREPARE), \
+			.edge_begin = (gravm_runstack_edge_begin_t)(EDGE_BEGIN), \
+			.edge_next = (gravm_runstack_edge_next_t)(EDGE_NEXT), \
+			.edge_end = (gravm_runstack_edge_end_t)(EDGE_END), \
+			.edge_abort = (gravm_runstack_edge_abort_t)(EDGE_ABORT), \
+			.edge_catch = (gravm_runstack_edge_catch_t)(EDGE_CATCH), \
+			.node_enter = (gravm_runstack_node_enter_t)(NODE_ENTER), \
+			.node_run = (gravm_runstack_node_run_t)(NODE_RUN), \
+			.node_leave = (gravm_runstack_node_leave_t)(NODE_LEAVE), \
+			.node_catch = (gravm_runstack_node_catch_t)(NODE_CATCH) \
+		}
 
-	int (*begin)(void *user);
-	int (*end)(void *user);
+typedef struct gravm_runstack gravm_runstack_t;
+typedef struct gravm_runstack_callback gravm_runstack_callback_t;
+
+typedef int (*gravm_runstack_init_t)(void *user);
+typedef void (*gravm_runstack_destroy_t)(void *user);
+typedef int (*gravm_runstack_structure_t)(void *user, int edge, gravm_runstack_edgedef_t *def);
+
+typedef int (*gravm_runstack_begin_t)(void *user);
+typedef int (*gravm_runstack_end_t)(void *user);
+typedef int (*gravm_runstack_descend_t)(void *user, int edge, void *parent_ctx, void *child_ctx);
+typedef int (*gravm_runstack_ascend_t)(void *user, int edge, bool throwing, int err, void *parent_ctx, void *child_ctx);
+
+typedef int (*gravm_runstack_edge_prepare_t)(void *user, int id, void *context);
+typedef int (*gravm_runstack_edge_unprepare_t)(void *user, int id, void *context);
+typedef int (*gravm_runstack_edge_begin_t)(void *user, int id, void *context);
+typedef int (*gravm_runstack_edge_next_t)(void *user, int iteration, int id, void *context);
+typedef int (*gravm_runstack_edge_end_t)(void *user, int id, void *context);
+typedef int (*gravm_runstack_edge_abort_t)(void *user, int err, int id, void *context);
+typedef int (*gravm_runstack_edge_catch_t)(void *user, int err, int id, void *context);
+
+typedef int (*gravm_runstack_node_enter_t)(void *user, int id, void *framedata);
+typedef int (*gravm_runstack_node_run_t)(void *user, int id, void *framedata);
+typedef int (*gravm_runstack_node_leave_t)(void *user, int id, void *framedata);
+typedef int (*gravm_runstack_node_catch_t)(void *user, int err, int id, void *framedata); /* only method that may return THROW during throwing; replaces the error code with the one stored in errno after call; other methods will produce a fatal error when returning THROW during throwing */
+
+struct gravm_runstack_callback {
+	gravm_runstack_init_t init; /* returns: number of edges */
+	gravm_runstack_destroy_t destroy;
+	gravm_runstack_structure_t structure;
+
+	gravm_runstack_begin_t begin;
+	gravm_runstack_end_t end;
+
 	/* descend/ascend: won't be called for root edges */
-	int (*descend)(void *user, int edge, void *parent_framedata, void *child_framedata);
-	int (*ascend)(void *user, int edge, bool throwing, int err, void *parent_framedata, void *child_framedata);
+	gravm_runstack_descend_t descend;
+	gravm_runstack_ascend_t ascend;
 
 	/* difference abort/catch: abort is called if catch is not yet possible
 	 * (i.e. the exception occured "above" the catch)
@@ -75,18 +123,18 @@ struct gravm_runstack_callback {
 	 * after prepare() and before unprepare()
 	 * and not after begin() and before end()
 	 * NOTE: root edges won't be prepare()d, therefore abort() is never called on them */
-	int (*edge_prepare)(void *user, int id, void *framedata);
-	int (*edge_unprepare)(void *user, int id, void *framedata);
-	int (*edge_begin)(void *user, int id, void *framedata);
-	int (*edge_next)(void *user, int iteration, int id, void *framedata);
-	int (*edge_end)(void *user, int id, void *framedata);
-	int (*edge_abort)(void *user, int err, int id, void *framedata);
-	int (*edge_catch)(void *user, int err, int id, void *framedata); /* only method that may return THROW during throwing; replaces the error code with the one stored in errno after call; other methods will produce a fatal error when returning THROW during throwing */
+	gravm_runstack_edge_prepare_t edge_prepare;
+	gravm_runstack_edge_unprepare_t edge_unprepare;
+	gravm_runstack_edge_begin_t edge_begin;
+	gravm_runstack_edge_next_t edge_next;
+	gravm_runstack_edge_end_t edge_end;
+	gravm_runstack_edge_abort_t edge_abort;
+	gravm_runstack_edge_catch_t edge_catch; /* only method that may return THROW during throwing; replaces the error code with the one stored in errno after call; other methods will produce a fatal error when returning THROW during throwing */
 
-	int (*node_enter)(void *user, int id, void *framedata);
-	int (*node_leave)(void *user, int id, void *framedata);
-	int (*node_run)(void *user, int id, void *framedata);
-	int (*node_catch)(void *user, int err, int id, void *framedata); /* only method that may return THROW during throwing; replaces the error code with the one stored in errno after call; other methods will produce a fatal error when returning THROW during throwing */
+	gravm_runstack_node_enter_t node_enter;
+	gravm_runstack_node_run_t node_run;
+	gravm_runstack_node_leave_t node_leave;
+	gravm_runstack_node_catch_t node_catch; /* only method that may return THROW during throwing; replaces the error code with the one stored in errno after call; other methods will produce a fatal error when returning THROW during throwing */
 };
 
 /* sets errno in case NULL is returned */
