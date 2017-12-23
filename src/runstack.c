@@ -433,7 +433,7 @@ static void exec_descend(
 	int ret;
 	
 	if(self->top->prev != NULL && self->cb->descend != NULL) {
-		ret = self->cb->descend(self->user, self->top->prev->user, self->top->user);
+		ret = self->cb->descend(self->user, self->top->edge->id, self->top->prev->user, self->top->user);
 		self->invoked = true;
 	}
 	else
@@ -704,7 +704,7 @@ static void exec_ascend(
 	int ret;
 
 	if(self->top->prev != NULL && self->cb->ascend != NULL) {
-		ret = self->cb->ascend(self->user, false, 0, self->top->prev->user, self->top->user);
+		ret = self->cb->ascend(self->user, self->top->edge->id, false, 0, self->top->prev->user, self->top->user);
 		self->invoked = true;
 	}
 	else
@@ -871,7 +871,7 @@ static void throw_edge_end(
 	int ret;
 
 	if(self->top->prev != NULL && self->cb->ascend != NULL) {
-		ret = self->cb->ascend(self->user, true, self->throw_code, self->top->prev->user, self->top->user);
+		ret = self->cb->ascend(self->user, self->top->edge->id, true, self->throw_code, self->top->prev->user, self->top->user);
 		self->invoked = true;
 	}
 	else

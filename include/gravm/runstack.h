@@ -64,8 +64,8 @@ struct gravm_runstack_callback {
 	int (*begin)(void *user);
 	int (*end)(void *user);
 	/* descend/ascend: won't be called for root edges */
-	int (*descend)(void *user, void *parent_framedata, void *child_framedata);
-	int (*ascend)(void *user, bool throwing, int err, void *parent_framedata, void *child_framedata);
+	int (*descend)(void *user, int edge, void *parent_framedata, void *child_framedata);
+	int (*ascend)(void *user, int edge, bool throwing, int err, void *parent_framedata, void *child_framedata);
 
 	/* difference abort/catch: abort is called if catch is not yet possible
 	 * (i.e. the exception occured "above" the catch)

@@ -264,6 +264,7 @@ static int cb_test_begin(
 
 static int cb_test_descend(
 		void *data,
+		int edge,
 		void *parent,
 		void *child)
 {
@@ -402,6 +403,7 @@ static int cb_test_edge_catch(
 
 static int cb_test_ascend(
 		void *data,
+		int edge,
 		bool throwing,
 		int err,
 		void *parent,
