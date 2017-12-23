@@ -59,7 +59,6 @@ static const gravm_runstack_edgedef_t test_3edge[] = {
 
 enum {
 	CALL_NONE,
-	CALL_BEGIN,
 	CALL_DESCEND,
 	CALL_EDGE_BEGIN,
 	CALL_EDGE_NEXT,
@@ -73,12 +72,10 @@ enum {
 	CALL_EDGE_ABORT,
 	CALL_EDGE_CATCH,
 	CALL_ASCEND,
-	CALL_END
 };
 
 static const char *test_call_names[] = {
 	"none",
-	"begin",
 	"descend",
 	"edge_begin",
 	"edge_next",
@@ -92,7 +89,6 @@ static const char *test_call_names[] = {
 	"edge_abort",
 	"edge_catch",
 	"ascend",
-	"end"
 };
 
 enum {
@@ -251,13 +247,6 @@ static int cb_test_structure(
 	return 0;
 }
 
-static int cb_test_begin(
-		void *data)
-{
-	CB_BEGIN(CALL_BEGIN, GRAVM_RS_TRUE)
-	CB_DONE;
-}
-
 static int cb_test_descend(
 		void *data,
 		int edge,
@@ -411,13 +400,6 @@ static int cb_test_ascend(
 	CB_DONE;
 }
 
-static int cb_test_end(
-		void *data)
-{
-	CB_BEGIN(CALL_END, GRAVM_RS_SUCCESS)
-	CB_DONE;
-}
-
 /******************************** TEST 1 **********************************/
 
 static int test1_init()
@@ -508,11 +490,13 @@ static int test2_cleanup()
 static void test2_full_run_0()
 {
 	static const test_step_t steps[] = {
-		{	.result = { /* call begin() */
-				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL,
-				.stack_size = 1,
-				.called = CALL_BEGIN,
-				.state = GRAVM_RS_STATE_EXECUTING } },
+		{	.call = {
+				.flags = FCALL_RET,
+				.ret = GRAVM_RS_TRUE },
+			.result = { /* call descend() */
+				.flags = FRESULT_STATE | FRESULT_CALL,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_DESCEND } },
 
 		{	.call = {
 				.flags = FCALL_RET,
@@ -522,11 +506,17 @@ static void test2_full_run_0()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_BEGIN } },
 
-		{	.result = { /* call end() */
-				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+		{	.result = { /* call ascend() */
+				.flags = FRESULT_STATE | FRESULT_CALL,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
+				.stack_size = 0,
 				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_END } }
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -537,11 +527,13 @@ static void test2_full_run_0()
 static void test2_full_run_1()
 {
 	static const test_step_t steps[] = {
-		{	.result = { /* call begin() */
-				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL,
-				.stack_size = 1,
-				.called = CALL_BEGIN,
-				.state = GRAVM_RS_STATE_EXECUTING } },
+		{	.call = {
+				.flags = FCALL_RET,
+				.ret = GRAVM_RS_TRUE },
+			.result = { /* call descend() */
+				.flags = FRESULT_STATE | FRESULT_CALL,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_DESCEND } },
 
 		{	.result = { /* call edge_begin() */
 				.flags = FRESULT_STATE | FRESULT_CALL,
@@ -578,11 +570,17 @@ static void test2_full_run_1()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_END } },
 
-		{	.result = { /* call end() */
-				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+		{	.result = { /* call ascend() */
+				.flags = FRESULT_STATE | FRESULT_CALL,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
+				.stack_size = 0,
 				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_END } }
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -646,11 +644,17 @@ static void test2_full_run_3()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_END } },
 
-		{	.result = { /* call end() */
-				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+		{	.result = { /* call ascend() */
+				.flags = FRESULT_STATE | FRESULT_CALL,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
+				.stack_size = 0,
 				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_END } }
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -665,11 +669,16 @@ static void test2_veto_begin()
 				.flags = FCALL_RET,
 				.ret = GRAVM_RS_FALSE },
 			.result = {
-				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL,
+				.flags = FRESULT_STATE | FRESULT_CALL,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_DESCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
 				.stack_size = 0,
 				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_BEGIN } }
+				.called = CALL_NONE } }
 	};
 	test_ctx.steps = steps;
 	test_ctx.n_steps = ARRAY_SIZE(steps);
@@ -688,11 +697,17 @@ static void test2_veto_edge_begin()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_BEGIN } },
 
-		{	.result = { /* call end() */
-				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+		{	.result = { /* call ascend() */
+				.flags = FRESULT_STATE | FRESULT_CALL,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
+				.stack_size = 0,
 				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_END } }
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -813,10 +828,17 @@ static void test2_throw_begin_error()
 				.err = -123456 },
 			.result = {
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL | FRESULT_ERRNO,
-				.ret = GRAVM_RS_THROW,
+				.ret = GRAVM_RS_TRUE,
 				.err = -123456,
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_DESCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
+				.ret = GRAVM_RS_THROW,
+				.stack_size = 0,
 				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
-				.called = CALL_BEGIN } }
+				.called = CALL_NONE } }
 	};
 	test_ctx.steps = steps;
 	test_ctx.n_steps = ARRAY_SIZE(steps);
@@ -832,10 +854,17 @@ static void test2_throw_begin_value()
 				.err = 0 },
 			.result = {
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL | FRESULT_ERRNO,
-				.ret = GRAVM_RS_THROW,
+				.ret = GRAVM_RS_TRUE,
 				.err = 0,
-				.state = GRAVM_RS_STATE_EXECUTED, /* difference to throw_error */
-				.called = CALL_BEGIN } }
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_DESCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
+				.ret = GRAVM_RS_THROW,
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 	test_ctx.steps = steps;
 	test_ctx.n_steps = ARRAY_SIZE(steps);
@@ -856,11 +885,18 @@ static void test2_throw_edge_begin()
 				.state = GRAVM_RS_STATE_THROWING,
 				.called = CALL_EDGE_BEGIN } },
 
-		{	.result = { /* call end() */
+		{	.result = { /* call ascend() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_THROW,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -894,12 +930,19 @@ static void test2_throw_edge_next()
 				.state = GRAVM_RS_STATE_THROWING,
 				.called = CALL_EDGE_CATCH } },
 
-		{	.result = { /* call end() */
+		{	.result = { /* call ascend() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL | FRESULT_ERRNO,
 				.err = -123456,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_THROW,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -929,9 +972,16 @@ static void test2_throw_node_enter()
 		{	.result = { /* call end() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL | FRESULT_ERRNO,
 				.err = -123456,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_THROW,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -963,12 +1013,19 @@ static void test2_throw_node_run()
 				.state = GRAVM_RS_STATE_THROWING,
 				.called = CALL_EDGE_CATCH } },
 
-		{	.result = { /* call end() */
+		{	.result = { /* call ascend() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL | FRESULT_ERRNO,
 				.err = -123456,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_THROW,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -997,10 +1054,17 @@ static void test2_throw_node_leave()
 
 		{	.result = { /* call end() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL | FRESULT_ERRNO,
-				.ret = GRAVM_RS_THROW,
+				.ret = GRAVM_RS_TRUE,
 				.err = -123456,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
+				.ret = GRAVM_RS_THROW,
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -1031,9 +1095,16 @@ static void test2_throw_edge_end()
 
 		{	.result = { /* call end() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_THROW,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -1059,9 +1130,16 @@ static void test2_throw_end()
 				.ret = GRAVM_RS_THROW },
 			.result = { /* call end() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_THROW,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -1166,10 +1244,17 @@ static void test2_rethrow_edge()
 
 		{	.result = { /* call end() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL | FRESULT_ERRNO,
-				.ret = GRAVM_RS_THROW,
+				.ret = GRAVM_RS_TRUE,
 				.err = -654321,
-				.state = GRAVM_RS_STATE_EXECUTED_ERROR,
-				.called = CALL_END } }
+				.state = GRAVM_RS_STATE_THROWING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
+				.ret = GRAVM_RS_THROW,
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED_ERROR, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -1235,10 +1320,10 @@ static int test3_cleanup()
 static void test3_full_run_0()
 {
 	static const test_step_t steps[] = {
-		{	.result = { /* call begin() */
+		{	.result = { /* call descend() */
 				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL,
 				.stack_size = 1,
-				.called = CALL_BEGIN,
+				.called = CALL_DESCEND,
 				.state = GRAVM_RS_STATE_EXECUTING } },
 
 		/* first edge */
@@ -1251,6 +1336,14 @@ static void test3_full_run_0()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_BEGIN } },
 
+		{	.result = {
+				.flags = FRESULT_CALL,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_CALL,
+				.called = CALL_DESCEND } },
+
 		/* second edge */
 		{	.call = {
 				.flags = FCALL_RET,
@@ -1260,6 +1353,14 @@ static void test3_full_run_0()
 				.id = 1,
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_BEGIN } },
+
+		{	.result = {
+				.flags = FRESULT_CALL,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_CALL,
+				.called = CALL_DESCEND } },
 
 		/* third edge */
 		{	.call = {
@@ -1271,11 +1372,18 @@ static void test3_full_run_0()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_BEGIN } },
 
-		{	.result = { /* call end() */
+		{	.result = { /* call ascend() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
-				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -1361,11 +1469,18 @@ static void test4_full_run_0()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_END } },
 
-		{	.result = { /* call end() */
+		{	.result = { /* call ascend() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
-				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -1910,11 +2025,18 @@ static void test5_full_run_0()
 				.state = GRAVM_RS_STATE_EXECUTING,
 				.called = CALL_EDGE_END } },
 
-		{	.result = { /* call end() */
+		{	.result = { /* call ascend() */
 				.flags = FRESULT_RET | FRESULT_STATE | FRESULT_CALL,
+				.ret = GRAVM_RS_TRUE,
+				.state = GRAVM_RS_STATE_EXECUTING,
+				.called = CALL_ASCEND } },
+
+		{	.result = {
+				.flags = FRESULT_STATE | FRESULT_STACK_SIZE | FRESULT_CALL | FRESULT_RET,
 				.ret = GRAVM_RS_FALSE,
-				.state = GRAVM_RS_STATE_EXECUTED,
-				.called = CALL_END } }
+				.stack_size = 0,
+				.state = GRAVM_RS_STATE_EXECUTED, /* difference to throw_value */
+				.called = CALL_NONE } }
 	};
 
 	test_ctx.steps = steps;
@@ -1955,8 +2077,6 @@ int gravmtest_runstack()
 	test_cb.init = cb_test_init;
 	test_cb.destroy = cb_test_destroy;
 	test_cb.structure = cb_test_structure;
-	test_cb.begin = cb_test_begin;
-	test_cb.end = cb_test_end;
 	test_cb.descend = cb_test_descend;
 	test_cb.ascend = cb_test_ascend;
 	test_cb.edge_begin = cb_test_edge_begin;
@@ -2010,7 +2130,7 @@ int gravmtest_runstack()
 		ADD_TEST("throw: node enter (first 'upper' node)", test4_throw_node_enter_upper);
 		ADD_TEST("throw: edge prepare", test4_throw_edge_prepare);
 		ADD_TEST("throw: node run (first 'upper' node)", test4_throw_node_run_upper);
-		ADD_TEST("throw: descend", test4_throw_descend); /* NOTE: in comparison to test 2, the tests between descend() and ascend() run with stack_size == 2, i.e. not on the root edge but on the outgoing edge of the first node */
+		ADD_TEST("throw: descend", test4_throw_descend); // NOTE: in comparison to test 2, the tests between descend() and ascend() run with stack_size == 2, i.e. not on the root edge but on the outgoing edge of the first node
 		ADD_TEST("throw: edge begin", test4_throw_edge_begin);
 		ADD_TEST("throw: edge next", test4_throw_edge_next);
 		ADD_TEST("throw: node enter", test4_throw_node_enter);

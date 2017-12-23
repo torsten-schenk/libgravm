@@ -53,7 +53,7 @@ typedef struct {
 } gravm_runstack_edgedef_t;
 
 #define GRAVM_RUNSTACK_MKCB( \
-		INIT, DESTROY, STRUCTURE, BEGIN, END, \
+		INIT, DESTROY, STRUCTURE, \
 		DESCEND, ASCEND, \
 		EDGE_PREPARE, EDGE_UNPREPARE, EDGE_BEGIN, EDGE_NEXT, EDGE_END, EDGE_ABORT, EDGE_CATCH, \
 		NODE_ENTER, NODE_RUN, NODE_LEAVE, NODE_CATCH) \
@@ -61,8 +61,6 @@ typedef struct {
 			.init = (gravm_runstack_init_t)(INIT), \
 			.destroy = (gravm_runstack_destroy_t)(DESTROY), \
 			.structure = (gravm_runstack_structure_t)(STRUCTURE), \
-			.begin = (gravm_runstack_begin_t)(BEGIN), \
-			.end = (gravm_runstack_end_t)(END), \
 			.descend = (gravm_runstack_descend_t)(DESCEND), \
 			.ascend = (gravm_runstack_ascend_t)(ASCEND), \
 			.edge_prepare = (gravm_runstack_edge_prepare_t)(EDGE_PREPARE), \
@@ -85,8 +83,6 @@ typedef int (*gravm_runstack_init_t)(void *user);
 typedef void (*gravm_runstack_destroy_t)(void *user);
 typedef int (*gravm_runstack_structure_t)(void *user, int edge, gravm_runstack_edgedef_t *def);
 
-typedef int (*gravm_runstack_begin_t)(void *user);
-typedef int (*gravm_runstack_end_t)(void *user);
 typedef int (*gravm_runstack_descend_t)(void *user, int edge, void *parent_ctx, void *child_ctx);
 typedef int (*gravm_runstack_ascend_t)(void *user, int edge, bool throwing, int err, void *parent_ctx, void *child_ctx);
 
@@ -107,9 +103,6 @@ struct gravm_runstack_callback {
 	gravm_runstack_init_t init; /* returns: number of edges */
 	gravm_runstack_destroy_t destroy;
 	gravm_runstack_structure_t structure;
-
-	gravm_runstack_begin_t begin;
-	gravm_runstack_end_t end;
 
 	/* descend/ascend: won't be called for root edges */
 	gravm_runstack_descend_t descend;
@@ -191,4 +184,99 @@ void gravm_runstack_dump(
 		gravm_runstack_t *self,
 		void (*print_edge)(FILE *f, void *user, int id),
 		void (*print_node)(FILE *f, void *user, int id));
+
+/***** dispatcher *****/
+
+typedef int (*gravm_runstack_dispatch_node_enter_t)(void *user, void *frame);
+typedef int (*gravm_runstack_dispatch_node_run_t)(void *user, void *frame);
+typedef int (*gravm_runstack_dispatch_node_leave_t)(void *user, void *frame);
+typedef int (*gravm_runstack_dispatch_node_catch_t)(void *user, int err, void *frame);
+
+typedef int (*gravm_runstack_dispatch_edge_descend_t)(void *user, void *parent_frame, void *child_frame);
+typedef int (*gravm_runstack_dispatch_edge_ascend_t)(void *user, bool throwing, int err, void *parent_frame, void *child_frame);
+typedef int (*gravm_runstack_dispatch_edge_prepare_t)(void *user, void *frame);
+typedef int (*gravm_runstack_dispatch_edge_unprepare_t)(void *user, void *frame);
+typedef int (*gravm_runstack_dispatch_edge_begin_t)(void *user, void *frame);
+typedef int (*gravm_runstack_dispatch_edge_next_t)(void *user, int iter, void *frame);
+typedef int (*gravm_runstack_dispatch_edge_end_t)(void *user, void *frame);
+typedef int (*gravm_runstack_dispatch_edge_abort_t)(void *user, int err, void *frame);
+typedef int (*gravm_runstack_dispatch_edge_catch_t)(void *user, int err, void *frame);
+
+#define GRAVM_RUNSTACK_DISPATCH_MKNODE( \
+		USER, \
+		ENTER, RUN, LEAVE, CATCH) \
+		{ \
+			.user = (USER), \
+			.enter = (gravm_runstack_dispatch_node_enter_t)(ENTER), \
+			.run = (gravm_runstack_dispatch_node_run_t)(RUN), \
+			.leave = (gravm_runstack_dispatch_node_leave_t)(LEAVE), \
+			.catsh = (gravm_runstack_dispatch_node_catch_t)(CATCH) \
+		}
+
+#define GRAVM_RUNSTACK_DISPATCH_MKEDGE( \
+		USER, \
+		DESCEND, ASCEND, \
+		PREPARE, UNPREPARE, \
+		BEGIN, NEXT, END, ABORT, CATCH) \
+		{ \
+			.user = (USER), \
+			.descend = (gravm_runstack_dispatch_edge_descend_t)(DESCEND), \
+			.ascend = (gravm_runstack_dispatch_edge_ascend_t)(ASCEND), \
+			.prepare = (gravm_runstack_dispatch_edge_prepare_t)(PREPARE), \
+			.unprepare = (gravm_runstack_dispatch_edge_unprepare_t)(UNPREPARE), \
+			.begin = (gravm_runstack_dispatch_edge_begin_t)(BEGIN), \
+			.next = (gravm_runstack_dispatch_edge_next_t)(NEXT), \
+			.end = (gravm_runstack_dispatch_edge_end_t)(END), \
+			.abort = (gravm_runstack_dispatch_edge_abort_t)(ABORT), \
+			.catsh = (gravm_runstack_dispatch_edge_catch_t)(CATCH) \
+		}
+
+typedef struct gravm_runstack_dispatch_backnode gravm_runstack_dispatch_backnode_t;
+typedef struct gravm_runstack_dispatch_backedge gravm_runstack_dispatch_backedge_t;
+typedef struct gravm_runstack_dispatch_frontnode gravm_runstack_dispatch_frontnode_t;
+typedef struct gravm_runstack_dispatch_frontedge gravm_runstack_dispatch_frontedge_t;
+
+struct gravm_runstack_dispatch_backnode {
+	int frontnode;
+};
+
+struct gravm_runstack_dispatch_backedge {
+	int priority;
+	int source;
+	int target;
+	int frontedge;
+};
+
+struct gravm_runstack_dispatch_frontnode {
+	void *user;
+
+	gravm_runstack_dispatch_node_enter_t enter;
+	gravm_runstack_dispatch_node_run_t run;
+	gravm_runstack_dispatch_node_leave_t leave;
+	gravm_runstack_dispatch_node_catch_t catsh;
+};
+
+struct gravm_runstack_dispatch_frontedge {
+	void *user;
+
+	gravm_runstack_dispatch_edge_descend_t descend;
+	gravm_runstack_dispatch_edge_ascend_t ascend;
+	gravm_runstack_dispatch_edge_prepare_t prepare;
+	gravm_runstack_dispatch_edge_unprepare_t unprepare;
+	gravm_runstack_dispatch_edge_begin_t begin;
+	gravm_runstack_dispatch_edge_next_t next;
+	gravm_runstack_dispatch_edge_end_t end;
+	gravm_runstack_dispatch_edge_abort_t abort;
+	gravm_runstack_dispatch_edge_catch_t catsh;
+};
+
+
+int gravm_runstack_dispatch_oneshot(
+		const gravm_runstack_dispatch_backnode_t *backnodes,
+		const gravm_runstack_dispatch_backedge_t *backedges,
+		const gravm_runstack_dispatch_frontnode_t *frontnodes,
+		const gravm_runstack_dispatch_frontedge_t *frontedges,
+		int max_stacksz,
+		void *basectx,
+		size_t ctxsz);
 

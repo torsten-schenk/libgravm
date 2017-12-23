@@ -1,4 +1,4 @@
 #pragma once
 
-#define GRAVM_BTREE_ORDER 10
+#define GRAVM_BTREE_ORDER 31
 

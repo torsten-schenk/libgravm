@@ -432,12 +432,25 @@ static void exec_descend(
 {
 	int ret;
 	
-	if(self->top->prev != NULL && self->cb->descend != NULL) {
-		ret = self->cb->descend(self->user, self->top->edge->id, self->top->prev->user, self->top->user);
+	if(self->cb->descend != NULL) {
+		void *user;
+		if(self->top->prev == NULL)
+			user = self->top->prev->user;
+		else
+			user = NULL;
+		ret = self->cb->descend(self->user, self->top->edge->id, user, self->top->user);
 		self->invoked = true;
 	}
 	else
 		ret = GRAVM_RS_TRUE;
+
+	
+/*	if(self->top->prev != NULL && self->cb->descend != NULL) {
+		ret = self->cb->descend(self->user, self->top->edge->id, self->top->prev->user, self->top->user);
+		self->invoked = true;
+	}
+	else
+		ret = GRAVM_RS_TRUE;*/
 
 	switch(ret) {
 		case GRAVM_RS_TRUE:
@@ -702,13 +715,25 @@ static void exec_ascend(
 		gravm_runstack_t *self)
 {
 	int ret;
-
-	if(self->top->prev != NULL && self->cb->ascend != NULL) {
-		ret = self->cb->ascend(self->user, self->top->edge->id, false, 0, self->top->prev->user, self->top->user);
+	if(self->cb->ascend != NULL) {
+		void *user;
+		if(self->top->prev == NULL)
+			user = self->top->prev->user;
+		else
+			user = NULL;
+		ret = self->cb->ascend(self->user, self->top->edge->id, false, 0, user, self->top->user);
 		self->invoked = true;
 	}
 	else
 		ret = GRAVM_RS_SUCCESS;
+
+
+/*	if(self->cb->ascend != NULL) {
+		ret = self->cb->ascend(self->user, self->top->edge->id, false, 0, self->top->prev->user, self->top->user);
+		self->invoked = true;
+	}
+	else
+		ret = GRAVM_RS_SUCCESS;*/
 	switch(ret) {
 		case GRAVM_RS_SUCCESS:
 			self->top->ip++;
@@ -870,12 +895,24 @@ static void throw_edge_end(
 {
 	int ret;
 
-	if(self->top->prev != NULL && self->cb->ascend != NULL) {
-		ret = self->cb->ascend(self->user, self->top->edge->id, true, self->throw_code, self->top->prev->user, self->top->user);
+	if(self->cb->ascend != NULL) {
+		void *user;
+		if(self->top->prev == NULL)
+			user = self->top->prev->user;
+		else
+			user = NULL;
+		ret = self->cb->ascend(self->user, self->top->edge->id, true, self->throw_code, user, self->top->user);
 		self->invoked = true;
 	}
 	else
 		ret = GRAVM_RS_SUCCESS;
+
+/*	if(self->top->prev != NULL && self->cb->ascend != NULL) {
+		ret = self->cb->ascend(self->user, self->top->edge->id, true, self->throw_code, self->top->prev->user, self->top->user);
+		self->invoked = true;
+	}
+	else
+		ret = GRAVM_RS_SUCCESS;*/
 	switch(ret) {
 		case GRAVM_RS_SUCCESS:
 			self->top->ip++;
@@ -1060,38 +1097,12 @@ int gravm_runstack_step(
 					errno = -ENOENT;
 					return GRAVM_RS_FATAL;
 				}
-
-				if(self->cb->begin != NULL) {
-					ret = self->cb->begin(self->user);
-					self->invoked = true;
+				ret = push(self, self->root_it.it.element);
+				if(ret < 0) {
+					self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
+					return GRAVM_RS_FATAL;
 				}
-				else
-					ret = GRAVM_RS_TRUE;
-				switch(ret) {
-					case GRAVM_RS_TRUE:
-						ret = push(self, self->root_it.it.element);
-						if(ret < 0) {
-							self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-							return GRAVM_RS_FATAL;
-						}
-						break;
-					case GRAVM_RS_FALSE:
-						self->state = GRAVM_RS_STATE_EXECUTED;
-						return GRAVM_RS_FALSE;
-					case GRAVM_RS_FATAL:
-						self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-						return GRAVM_RS_FATAL;
-					case GRAVM_RS_THROW:
-						if(errno == 0)
-							self->state = GRAVM_RS_STATE_EXECUTED;
-						else
-							self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-						return GRAVM_RS_THROW;
-					default:
-						self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-						assert(false);
-						return GRAVM_RS_FATAL;
-				}
+				break;
 			case GRAVM_RS_STATE_EXECUTING:
 				if(self->top == NULL) {
 					if(it_next(&self->root_it)) {
@@ -1102,28 +1113,8 @@ int gravm_runstack_step(
 						}
 					}
 					else {
-						if(self->cb->end != NULL)
-							ret = self->cb->end(self->user);
-						else
-							ret = GRAVM_RS_SUCCESS;
-						switch(ret) {
-							case GRAVM_RS_SUCCESS:
-								self->state = GRAVM_RS_STATE_EXECUTED;
-								return GRAVM_RS_FALSE;
-							case GRAVM_RS_FATAL:
-								self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-								return GRAVM_RS_FATAL;
-							case GRAVM_RS_THROW:
-								if(errno == 0)
-									self->state = GRAVM_RS_STATE_EXECUTED;
-								else
-									self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-								return GRAVM_RS_THROW;
-							default:
-								self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-								assert(false);
-								return GRAVM_RS_FATAL;
-						}
+						self->state = GRAVM_RS_STATE_EXECUTED;
+						return GRAVM_RS_FALSE;
 					}
 				}
 				step_exec[self->top->ip](self);
@@ -1140,26 +1131,11 @@ int gravm_runstack_step(
 						}
 					}
 					else {
-						if(self->cb->end != NULL)
-							ret = self->cb->end(self->user);
+						if(self->throw_code == 0)
+							self->state = GRAVM_RS_STATE_EXECUTED;
 						else
-							ret = GRAVM_RS_SUCCESS;
-						switch(ret) {
-							case GRAVM_RS_SUCCESS:
-								if(self->throw_code == 0)
-									self->state = GRAVM_RS_STATE_EXECUTED;
-								else
-									self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-								return GRAVM_RS_THROW;
-							case GRAVM_RS_FATAL:
-							case GRAVM_RS_THROW:
-								self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-								return GRAVM_RS_FATAL;
-							default:
-								self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
-								assert(false);
-								return GRAVM_RS_FATAL;
-						}
+							self->state = GRAVM_RS_STATE_EXECUTED_ERROR;
+						return GRAVM_RS_THROW;
 					}
 				}
 				step_throw[self->top->ip](self);
@@ -1228,6 +1204,249 @@ const char *gravm_runstack_ip_name(
 	else
 		return NULL;
 }
+
+/***** dispatcher *****/
+
+typedef struct dispatch dispatch_t;
+
+struct dispatch {
+	const gravm_runstack_dispatch_backnode_t *backnodes;
+	const gravm_runstack_dispatch_backedge_t *backedges;
+	const gravm_runstack_dispatch_frontnode_t *frontnodes;
+	const gravm_runstack_dispatch_frontedge_t *frontedges;
+	void *basectx;
+};
+
+static int cb_init(
+		dispatch_t *decl)
+{
+	const gravm_runstack_dispatch_backedge_t *cur;
+	size_t nedge = 0;
+	for(cur = decl->backedges; cur->target != GRAVM_RS_ROOT; nedge++, cur++);
+	return nedge;
+}
+
+static void cb_destroy(
+		dispatch_t *decl)
+{}
+
+static int cb_structure(
+		dispatch_t *decl,
+		int edge,
+		gravm_runstack_edgedef_t *def)
+{
+	def->priority = decl->backedges[edge].priority;
+	def->source = decl->backedges[edge].source;
+	def->target = decl->backedges[edge].target;
+	return 0;
+}
+
+static int cb_descend(
+		dispatch_t *decl,
+		int edge,
+		void *parent_ctx,
+		void *child_ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[edge].frontedge;
+	if(frontedge->descend)
+		return frontedge->descend(frontedge->user, parent_ctx, child_ctx);
+	else
+		return GRAVM_RS_TRUE;
+}
+
+static int cb_ascend(
+		dispatch_t *decl,
+		int edge,
+		bool throwing,
+		int err,
+		void *parent_ctx,
+		void *child_ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[edge].frontedge;
+	if(frontedge->ascend)
+		return frontedge->ascend(frontedge->user, throwing, err, parent_ctx, child_ctx);
+	else
+		return GRAVM_RS_SUCCESS;
+}
+
+static int cb_edge_prepare(
+		dispatch_t *decl,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[id].frontedge;
+	if(frontedge->prepare)
+		return frontedge->prepare(frontedge->user, ctx);
+	else
+		return GRAVM_RS_SUCCESS;
+}
+
+static int cb_edge_unprepare(
+		dispatch_t *decl,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[id].frontedge;
+	if(frontedge->unprepare)
+		return frontedge->unprepare(frontedge->user, ctx);
+	else
+		return GRAVM_RS_SUCCESS;
+}
+
+static int cb_edge_begin(
+		dispatch_t *decl,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[id].frontedge;
+	if(frontedge->begin)
+		return frontedge->begin(frontedge->user, ctx);
+	else
+		return GRAVM_RS_TRUE;
+}
+
+static int cb_edge_next(
+		dispatch_t *decl,
+		int iter,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[id].frontedge;
+	if(frontedge->next)
+		return frontedge->next(frontedge->user, iter, ctx);
+	else if(iter > 0)
+		return GRAVM_RS_FALSE;
+	else
+		return GRAVM_RS_TRUE;
+}
+
+static int cb_edge_end(
+		dispatch_t *decl,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[id].frontedge;
+	if(frontedge->end)
+		return frontedge->end(frontedge->user, ctx);
+	else
+		return GRAVM_RS_SUCCESS;
+}
+
+static int cb_edge_abort(
+		dispatch_t *decl,
+		int err,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[id].frontedge;
+	if(frontedge->abort)
+		return frontedge->abort(frontedge->user, err, ctx);
+	else
+		return GRAVM_RS_SUCCESS;
+}
+
+static int cb_edge_catch(
+		dispatch_t *decl,
+		int err,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontedge_t *frontedge = decl->frontedges + decl->backedges[id].frontedge;
+	if(frontedge->catsh)
+		return frontedge->catsh(frontedge->user, err, ctx);
+	else
+		return GRAVM_RS_FALSE;
+}
+
+static int cb_node_enter(
+		dispatch_t *decl,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontnode_t *frontnode = decl->frontnodes + decl->backnodes[id].frontnode;
+	if(frontnode->enter)
+		return frontnode->enter(frontnode->user, ctx);
+	else
+		return GRAVM_RS_TRUE;
+}
+
+static int cb_node_run(
+		dispatch_t *decl,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontnode_t *frontnode = decl->frontnodes + decl->backnodes[id].frontnode;
+	if(frontnode->run)
+		return frontnode->run(frontnode->user, ctx);
+	else
+		return GRAVM_RS_TRUE;
+}
+
+static int cb_node_leave(
+		dispatch_t *decl,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontnode_t *frontnode = decl->frontnodes + decl->backnodes[id].frontnode;
+	if(frontnode->leave)
+		return frontnode->leave(frontnode->user, ctx);
+	else
+		return GRAVM_RS_SUCCESS;
+}
+
+static int cb_node_catch(
+		dispatch_t *decl,
+		int err,
+		int id,
+		void *ctx)
+{
+	const gravm_runstack_dispatch_frontnode_t *frontnode = decl->frontnodes + decl->backnodes[id].frontnode;
+	if(frontnode->catsh)
+		return frontnode->catsh(frontnode->user, err, ctx);
+	else
+		return GRAVM_RS_FALSE;
+}
+
+static const gravm_runstack_callback_t ops = GRAVM_RUNSTACK_MKCB(
+		cb_init, cb_destroy, cb_structure,
+		cb_descend, cb_ascend,
+		cb_edge_prepare, cb_edge_unprepare, cb_edge_begin, cb_edge_next, cb_edge_end, cb_edge_abort, cb_edge_catch,
+		cb_node_enter, cb_node_run, cb_node_leave, cb_node_catch);
+
+int gravm_runstack_dispatch_oneshot(
+		const gravm_runstack_dispatch_backnode_t *backnodes,
+		const gravm_runstack_dispatch_backedge_t *backedges,
+		const gravm_runstack_dispatch_frontnode_t *frontnodes,
+		const gravm_runstack_dispatch_frontedge_t *frontedges,
+		int max_stacksz,
+		void *basectx,
+		size_t ctxsz)
+{
+	gravm_runstack_t *rs;
+	dispatch_t decl;
+
+	decl.backnodes = backnodes;
+	decl.frontnodes = frontnodes;
+	decl.backedges = backedges;
+	decl.frontedges = frontedges;
+	decl.basectx = basectx;
+
+	rs = gravm_runstack_new(&ops, max_stacksz, ctxsz);
+	if(!rs)
+		goto error_0;
+	else if(gravm_runstack_prepare(rs, &decl) < 0)
+		goto error_1;
+	else if(gravm_runstack_run(rs) < 0)
+		goto error_1;
+	gravm_runstack_destroy(rs);
+	return 0;
+
+error_1:
+	gravm_runstack_destroy(rs);
+error_0:
+	return -1;
+}
+
 
 
 
